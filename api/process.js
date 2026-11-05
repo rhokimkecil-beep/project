@@ -9,11 +9,12 @@ export default async function handler(req, res) {
   if (!sourceId || !cookie || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
 
   try {
-    // 1. DOWNLOAD menggunakan endpoint Open Cloud yang BARU (apis.roblox.com)
-    const downloadRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
+    // 1. DOWNLOAD HANYA PAKAI COOKIE (Tanpa API Key)
+    // Kita kembali ke endpoint lama yang lebih permisif untuk download aset orang lain.
+    const downloadRes = await fetch(`https://assetdelivery.roblox.com/v1/asset?id=${sourceId}`, {
       headers: {
-        'x-api-key': apiKey, // Wajib pakai API Key dengan scope legacy-asset:manage
-        'User-Agent': 'Mozilla/5.0'
+        'Cookie': `.ROBLOSECURITY=${cookie}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
 
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
     const arrayBuffer = await downloadRes.arrayBuffer();
     const contentType = downloadRes.headers.get('content-type') || 'audio/mpeg';
     
-    // 2. UPLOAD ke Roblox (tetap pakai API Key)
+    // 2. UPLOAD TETAP PAKAI API KEY (Seperti biasa)
     const fileBlob = new Blob([arrayBuffer], { type: contentType });
     const metadata = {
       assetType: 'Audio',
