@@ -1,248 +1,454 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roblox Audio Batch Re-Uploader</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: #0f1117;
-    color: #e6e6e6;
-    min-height: 100vh;
-    padding: 24px;
-  }
-  .wrap { max-width: 700px; margin: 0 auto; }
-  h1 { font-size: 22px; color: #7aa2ff; margin-bottom: 4px; }
-  .sub { font-size: 13px; color: #888; margin-bottom: 22px; }
-  .card {
-    background: #171a23;
-    border: 1px solid #232838;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  label {
-    display: block;
-    font-size: 12px;
-    color: #9aa6c7;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-  }
-  input[type="text"], input[type="password"], textarea {
-    width: 100%;
-    background: #0d0f15;
-    border: 1px solid #232838;
-    color: #d6e0ff;
-    font-family: 'Consolas', monospace;
-    font-size: 13px;
-    padding: 10px;
-    border-radius: 6px;
-    outline: none;
-    margin-bottom: 12px;
-  }
-  textarea { resize: vertical; min-height: 100px; }
-  input:focus, textarea:focus { border-color: #4a6cf7; }
-  button {
-    background: #4a6cf7;
-    color: #fff;
-    border: none;
-    padding: 12px 18px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    width: 100%;
-  }
-  button:hover { background: #3a5ce5; }
-  button:disabled { background: #2a3350; cursor: not-allowed; }
-  .log {
-    margin-top: 14px;
-    background: #0d0f15;
-    border: 1px solid #232838;
-    border-radius: 6px;
-    padding: 10px;
-    font-family: 'Consolas', monospace;
-    font-size: 11px;
-    color: #9aa6c7;
-    max-height: 350px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-  .hint { font-size: 11px; color: #666; margin-top: 6px; line-height: 1.5; }
-  a { color: #7aa2ff; }
-  .success { color: #6f6; font-weight: bold; }
-  .error { color: #f66; font-weight: bold; }
-  .info { color: #7aa2ff; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Bulk Audio Spoofer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #0f1115; color: #e2e8f0; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1e1e24; }
+    ::-webkit-scrollbar-thumb { background: #3b3b4a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4b4b5a; }
+    .log-success { color: #4ade80; }
+    .log-error { color: #f87171; }
+    .log-info { color: #60a5fa; }
+    .log-warn { color: #fbbf24; }
+    .log-title { color: #c084fc; font-weight: bold; }
+  </style>
 </head>
-<body>
-<div class="wrap">
-  <h1>Roblox Audio Batch Re-Uploader</h1>
-  <div class="sub">Paste banyak rbxassetid, tool ini bakal proses satu per satu</div>
+<body class="min-h-screen p-4 md:p-8">
+  <div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <header class="mb-8 flex justify-between items-end">
+      <div>
+        <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+          Bulk Audio Spoofer
+        </h1>
+        <p class="text-gray-400 mt-1">Re-upload multiple Roblox audio IDs to your account safely.</p>
+      </div>
+      <div class="hidden md:block">
+        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-semibold border border-indigo-500/30">
+          V3 • Smart Parser Edition
+        </span>
+      </div>
+    </header>
 
-  <div class="card">
-    <label>API Key Open Cloud (Untuk Upload)</label>
-    <input type="password" id="apiKey" placeholder="Masukkan API Key (centang assets:write & assets:read)">
-    
-    <label style="margin-top:12px;">User ID Roblox Lo</label>
-    <input type="text" id="userId" placeholder="Contoh: 123456789 (Cek di profil lo)">
-    
-    <label style="margin-top:12px;">Cookie .ROBLOSECURITY (Untuk Download)</label>
-    <input type="password" id="cookie" placeholder="Masukkan cookie _|WARNING:-DO-NOT-SHARE...">
-  </div>
-
-  <div class="card">
-    <label>Daftar rbxassetid Lama (Pisahkan dengan Enter atau Koma)</label>
-    <textarea id="sourceIds" placeholder="115807882232957&#10;112162922738826&#10;rbxassetid://123456789"></textarea>
-    
-    <label>Nama Asset Baru (Otomatis ditambahin nomor)</label>
-    <input type="text" id="name" value="Re-uploaded Audio">
-    <label>Deskripsi</label>
-    <input type="text" id="desc" value="Batch re-uploaded via tool">
-    
-    <button id="btnProcess">Mulai Proses Batch</button>
-    <div class="log" id="log">Siap memproses antrean.</div>
-  </div>
-</div>
-<script>
-(function () {
-  const btn = document.getElementById('btnProcess');
-  const log = document.getElementById('log');
-
-  function write(msg, className = '') {
-    const span = document.createElement('span');
-    span.className = className;
-    span.textContent = msg + '\n';
-    log.appendChild(span);
-    log.scrollTop = log.scrollHeight;
-  }
-
-  btn.addEventListener('click', async function () {
-    const apiKey = document.getElementById('apiKey').value.trim();
-    const userId = document.getElementById('userId').value.trim();
-    const cookie = document.getElementById('cookie').value.trim();
-    const rawIds = document.getElementById('sourceIds').value.trim();
-    const baseName = document.getElementById('name').value.trim() || 'Re-uploaded Audio';
-    const desc = document.getElementById('desc').value.trim() || '';
-
-    if (!apiKey) return write('API Key kosong.', 'error');
-    if (!userId) return write('User ID kosong.', 'error');
-    if (!cookie) return write('Cookie kosong.', 'error');
-    if (!rawIds) return write('Daftar ID kosong.', 'error');
-
-    // Ekstrak semua angka dari input (bisa format rbxassetid:// atau angka doang)
-    const idArray = [...new Set(rawIds.match(/\d{5,}/g) || [])];
-    
-    if (idArray.length === 0) {
-      return write('Tidak ada ID valid yang ditemukan.', 'error');
-    }
-
-    btn.disabled = true;
-    log.innerHTML = '';
-    write(`Memulai batch process untuk ${idArray.length} ID...`, 'info');
-    write('--------------------------------------------------');
-
-    let successCount = 0;
-    let failCount = 0;
-    const resultList = [];
-
-    for (let i = 0; i < idArray.length; i++) {
-      const sourceId = idArray[i];
-      const currentName = `${baseName} ${i + 1}`;
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
-      write(`\n[${i + 1}/${idArray.length}] Memproses ID: ${sourceId}`);
-
-      try {
-        // Langkah 1: Download
-        write('  -> Download audio pakai Cookie...');
-        const dlRes = await fetch('/api/download', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceId: sourceId, cookie: cookie })
-        });
-        const dlData = await dlRes.json();
-
-        if (!dlData.success) {
-          throw new Error(`Gagal download: ${JSON.stringify(dlData.error || dlData)}`);
-        }
-        write(`  -> Download OK (${Math.round(dlData.size / 1024)} KB)`);
-
-        // Langkah 2: Upload
-        write('  -> Upload ulang pakai API Key...');
-        const createRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: apiKey,
-            userId: userId,
-            name: currentName,
-            description: desc,
-            fileBase64: dlData.base64,
-            contentType: dlData.contentType
-          })
-        });
-        const createData = await createRes.json();
+      <!-- Left Column: Settings & Inputs -->
+      <div class="lg:col-span-5 space-y-6">
         
-        if (!createData.operationId) {
-          throw new Error(`Gagal buat operasi upload: ${JSON.stringify(createData)}`);
-        }
-
-        // Langkah 3: Polling Status
-        write('  -> Menunggu Roblox memproses...');
-        let assetId = null;
-        for (let j = 0; j < 15; j++) {
-          await new Promise(r => setTimeout(r, 3000));
-          const pollRes = await fetch('/api/status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiKey: apiKey, operationId: createData.operationId })
-          });
-          const pollData = await pollRes.json();
+        <!-- Settings Card -->
+        <div class="bg-[#1a1c23] border border-gray-800 rounded-2xl p-6 shadow-xl">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Configuration
+            </h2>
+            <button id="btnSave" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 py-1 px-3 rounded-lg transition">Save</button>
+          </div>
           
-          if (pollData.done && pollData.assetId) {
-            assetId = pollData.assetId;
-            break;
-          }
-          if (pollData.error) {
-            throw new Error(`Roblox Error: ${JSON.stringify(pollData.error)}`);
-          }
-        }
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">API Key Open Cloud</label>
+              <input type="password" id="apiKey" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Masukkan API Key...">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">User ID Roblox</label>
+              <input type="text" id="userId" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Contoh: 123456789">
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Cookie .ROBLOSECURITY</label>
+              <input type="password" id="cookie" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500 transition-colors" placeholder="Masukkan Cookie...">
+            </div>
+          </div>
+        </div>
 
-        if (assetId) {
-          write(`  -> [SUKSES] ID Lama: ${sourceId} | ID Baru: rbxassetid://${assetId}`, 'success');
-          resultList.push({ old: sourceId, new: assetId });
-          successCount++;
-        } else {
-          throw new Error('Timeout, gagal dapat Asset ID baru.');
-        }
+        <!-- Batch Input Card -->
+        <div class="bg-[#1a1c23] border border-gray-800 rounded-2xl p-6 shadow-xl">
+          <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+            Batch Input
+          </h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold flex justify-between">
+                <span>Daftar ID / Teks</span>
+                <span id="idCount" class="text-indigo-400">0 Audio</span>
+              </label>
+              <textarea id="sourceIds" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors h-40 font-mono text-xs" placeholder="Paste teks berisi nama lagu dan ID di sini...&#10;Contoh:&#10;01. BLACK HOLE BREAKBEAT&#10;118362297271903"></textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Prefix Nama Aset</label>
+                <input type="text" id="name" value="Spoofed" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Jeda (Detik)</label>
+                <input type="number" id="delay" value="4" min="1" max="20" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
+              </div>
+            </div>
 
-      } catch (err) {
-        write(`  -> [GAGAL] ${err.message}`, 'error');
-        failCount++;
+            <button id="btnProcess" class="w-full mt-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2">
+              <svg id="iconPlay" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <svg id="iconLoading" class="w-5 h-5 animate-spin hidden" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <span id="btnText">Mulai Proses Batch</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Logs & Results -->
+      <div class="lg:col-span-7 flex flex-col h-[calc(100vh-8rem)] min-h-[600px]">
+        
+        <!-- Progress & Results Card -->
+        <div class="bg-[#1a1c23] border border-gray-800 rounded-2xl p-6 shadow-xl mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Status & Hasil
+            </h2>
+            <button id="btnCopy" class="bg-green-500/20 hover:bg-green-500/30 text-green-400 border border-green-500/30 text-xs font-bold py-2 px-4 rounded-lg transition-all flex items-center gap-2 disabled:opacity-50" disabled>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+              Copy ID Sukses
+            </button>
+          </div>
+
+          <!-- Progress Bar -->
+          <div class="mb-2 flex justify-between text-xs text-gray-400 font-medium">
+            <span id="progressText">Menunggu antrean...</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="w-full bg-[#0f1115] rounded-full h-3 mb-6 border border-gray-800 overflow-hidden">
+            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-[#0f1115] border border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center">
+              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Sukses</span>
+              <span id="statSuccess" class="text-2xl font-bold text-green-400">0</span>
+            </div>
+            <div class="bg-[#0f1115] border border-gray-800 rounded-xl p-4 flex flex-col items-center justify-center">
+              <span class="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Gagal</span>
+              <span id="statFail" class="text-2xl font-bold text-red-400">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terminal Log -->
+        <div class="bg-[#0a0b0e] border border-gray-800 rounded-2xl flex-1 flex flex-col shadow-xl overflow-hidden">
+          <div class="bg-[#1a1c23] border-b border-gray-800 px-4 py-3 flex justify-between items-center">
+            <div class="flex gap-2">
+              <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+            </div>
+            <span class="text-xs text-gray-500 font-mono">system@spoofer:~</span>
+          </div>
+          <div id="log" class="p-4 font-mono text-sm overflow-y-auto flex-1 whitespace-pre-wrap">Sistem siap. Silakan isi konfigurasi dan mulai proses.</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // --- Elements ---
+      const el = {
+        apiKey: document.getElementById('apiKey'),
+        userId: document.getElementById('userId'),
+        cookie: document.getElementById('cookie'),
+        sourceIds: document.getElementById('sourceIds'),
+        idCount: document.getElementById('idCount'),
+        name: document.getElementById('name'),
+        delay: document.getElementById('delay'),
+        btnProcess: document.getElementById('btnProcess'),
+        btnText: document.getElementById('btnText'),
+        iconPlay: document.getElementById('iconPlay'),
+        iconLoading: document.getElementById('iconLoading'),
+        btnSave: document.getElementById('btnSave'),
+        btnCopy: document.getElementById('btnCopy'),
+        log: document.getElementById('log'),
+        progressBar: document.getElementById('progressBar'),
+        progressPercent: document.getElementById('progressPercent'),
+        progressText: document.getElementById('progressText'),
+        statSuccess: document.getElementById('statSuccess'),
+        statFail: document.getElementById('statFail')
+      };
+
+      let successfulIds = [];
+
+      // --- Local Storage Settings ---
+      const loadSettings = () => {
+        el.apiKey.value = localStorage.getItem('spoofer_apiKey') || '';
+        el.userId.value = localStorage.getItem('spoofer_userId') || '';
+        el.cookie.value = localStorage.getItem('spoofer_cookie') || '';
+      };
+
+      const saveSettings = () => {
+        localStorage.setItem('spoofer_apiKey', el.apiKey.value.trim());
+        localStorage.setItem('spoofer_userId', el.userId.value.trim());
+        localStorage.setItem('spoofer_cookie', el.cookie.value.trim());
+        el.btnSave.textContent = 'Tersimpan!';
+        el.btnSave.classList.replace('bg-gray-800', 'bg-green-800/50');
+        setTimeout(() => {
+          el.btnSave.textContent = 'Save';
+          el.btnSave.classList.replace('bg-green-800/50', 'bg-gray-800');
+        }, 2000);
+      };
+
+      el.btnSave.addEventListener('click', saveSettings);
+      [el.apiKey, el.userId, el.cookie].forEach(input => input.addEventListener('change', saveSettings));
+      loadSettings();
+
+      // --- Utilities ---
+      function write(msg, type = '') {
+        const span = document.createElement('span');
+        if (type) span.className = `log-${type}`;
+        span.textContent = msg + '\n';
+        el.log.appendChild(span);
+        el.log.scrollTop = el.log.scrollHeight;
       }
-      
-      // Jeda antar ID biar ga kena rate limit / anti-spam Roblox
-      await new Promise(r => setTimeout(r, 2000));
-    }
 
-    write('\n--------------------------------------------------');
-    write(`SELESAI! Sukses: ${successCount}, Gagal: ${failCount}`, 'info');
-    
-    if (resultList.length > 0) {
-      write('\nDaftar ID Baru (siap di-copy):');
-      resultList.forEach(r => {
-        write(`Lama: ${r.old}  -->  Baru: rbxassetid://${r.new}`);
+      function updateProgress(current, total) {
+        const pct = Math.round((current / total) * 100);
+        el.progressBar.style.width = pct + '%';
+        el.progressPercent.textContent = pct + '%';
+        el.progressText.textContent = `Memproses ${current} dari ${total}`;
+      }
+
+      // --- SMART PARSER ---
+      // Fungsi buat nge-ekstrak Nama dan ID dari teks berantakan
+      function parseAudioData(text) {
+        const lines = text.split('\n');
+        const result = [];
+        let currentName = '';
+
+        for (let line of lines) {
+          line = line.trim();
+          if (!line) continue;
+
+          const idMatch = line.match(/\d{5,}/); // Cari angka minimal 5 digit
+          
+          if (idMatch) {
+            const id = idMatch[0];
+            // Ambil nama dari baris ini (buang angka ID-nya)
+            let name = line.replace(id, '').replace(/^[\d\.\-\s]+/, '').trim();
+            
+            // Kalau di baris ini ga ada nama, pakai nama dari baris sebelumnya
+            if (!name) name = currentName;
+            // Kalau tetep ga ada, kasih default
+            if (!name) name = 'Unknown Audio';
+
+            result.push({ id: id, name: name });
+            currentName = ''; // Reset buat baris selanjutnya
+          } else {
+            // Kalau baris ini ga ada ID, berarti ini nama lagu buat ID di baris berikutnya
+            // Hapus format angka di depan (kayak "01. ")
+            currentName = line.replace(/^[\d\.\-\s]+/, '').trim();
+          }
+        }
+        
+        // Hapus duplikat berdasarkan ID
+        const uniqueData = [];
+        const seenIds = new Set();
+        for (const item of result) {
+          if (!seenIds.has(item.id)) {
+            seenIds.add(item.id);
+            uniqueData.push(item);
+          }
+        }
+        
+        return uniqueData;
+      }
+
+      // Hitung ID realtime
+      el.sourceIds.addEventListener('input', () => {
+        const parsed = parseAudioData(el.sourceIds.value);
+        el.idCount.textContent = parsed.length + ' Audio';
       });
-    }
 
-    btn.disabled = false;
-  });
-})();
-</script>
+      // Copy Results
+      el.btnCopy.addEventListener('click', () => {
+        if (successfulIds.length === 0) return;
+        // Copy formatnya ID aja biar gampang di-paste
+        const textToCopy = successfulIds.map(id => `rbxassetid://${id}`).join('\n');
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          el.btnCopy.innerHTML = '<span class="flex items-center gap-2">✅ Berhasil Di-copy!</span>';
+          setTimeout(() => {
+            el.btnCopy.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy ID Sukses';
+          }, 2000);
+        });
+      });
+
+      // --- Main Process ---
+      el.btnProcess.addEventListener('click', async function () {
+        const apiKey = el.apiKey.value.trim();
+        const userId = el.userId.value.trim();
+        const cookie = el.cookie.value.trim();
+        const rawInput = el.sourceIds.value.trim();
+        const baseName = el.name.value.trim() || 'Spoofed';
+        const delaySec = parseInt(el.delay.value) || 4;
+
+        if (!apiKey) return write('❌ API Key kosong.', 'error');
+        if (!userId) return write('❌ User ID kosong.', 'error');
+        if (!cookie) return write('❌ Cookie kosong.', 'error');
+        
+        const audioList = parseAudioData(rawInput);
+        if (audioList.length === 0) return write('❌ Tidak ada ID valid.', 'error');
+
+        // Reset UI
+        el.btnProcess.disabled = true;
+        el.iconPlay.classList.add('hidden');
+        el.iconLoading.classList.remove('hidden');
+        el.btnText.textContent = 'Sedang Memproses...';
+        el.log.innerHTML = '';
+        el.statSuccess.textContent = '0';
+        el.statFail.textContent = '0';
+        el.btnCopy.disabled = true;
+        successfulIds = [];
+        
+        let successCount = 0;
+        let failCount = 0;
+        let currentIdx = 0;
+
+        write(`🚀 Memulai proses untuk ${audioList.length} Audio...`, 'info');
+        write(`⏱️ Jeda antar ID: ${delaySec} detik.`, 'info');
+        write('--------------------------------------------------');
+        
+        updateProgress(0, audioList.length);
+
+        for (let i = 0; i < audioList.length; i++) {
+          const item = audioList[i];
+          const sourceId = item.id;
+          const audioName = item.name;
+          
+          // Format nama buat di Roblox: "Spoofed - Nama Asli"
+          const uploadName = baseName ? `${baseName} - ${audioName}` : audioName;
+          currentIdx = i + 1;
+          
+          write(`\n[${currentIdx}/${audioList.length}] `, 'info');
+          write(`🎵 ${audioName} `, 'title'); // Tampilkan nama lagunya
+          write(`🆔 ${sourceId}`);
+
+          let success = false;
+          let retries = 3; 
+          
+          while (retries > 0 && !success) {
+            try {
+              // 1. Download
+              write('  ⬇️ Download audio...', 'info');
+              const dlRes = await fetch('/api/download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourceId: sourceId, cookie: cookie })
+              });
+              const dlData = await dlRes.json();
+
+              if (!dlData.success) {
+                if (dlData.error && (dlData.error.includes('403') || dlData.error.includes('429'))) {
+                  throw new Error('RATE_LIMIT');
+                }
+                throw new Error(dlData.error || 'Gagal download');
+              }
+
+              // 2. Upload
+              write('  ⬆️ Upload ulang...', 'info');
+              const createRes = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  apiKey: apiKey,
+                  userId: userId,
+                  name: uploadName, // Pake nama lagu asli
+                  description: 'Batch processed via Tool',
+                  fileBase64: dlData.base64,
+                  contentType: dlData.contentType
+                })
+              });
+              const createData = await createRes.json();
+              
+              if (!createData.operationId) {
+                throw new Error(`Upload gagal: ${JSON.stringify(createData)}`);
+              }
+
+              // 3. Polling
+              write('  ⏳ Menunggu Roblox...', 'info');
+              let assetId = null;
+              for (let j = 0; j < 15; j++) {
+                await new Promise(r => setTimeout(r, 3000));
+                const pollRes = await fetch('/api/status', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ apiKey: apiKey, operationId: createData.operationId })
+                });
+                const pollData = await pollRes.json();
+                
+                if (pollData.done && pollData.assetId) {
+                  assetId = pollData.assetId;
+                  break;
+                }
+                if (pollData.error) throw new Error(JSON.stringify(pollData.error));
+              }
+
+              if (assetId) {
+                write(`  ✅ SUKSES: rbxassetid://${assetId}`, 'success');
+                successfulIds.push(assetId);
+                successCount++;
+                success = true;
+              } else {
+                throw new Error('Timeout menunggu Roblox');
+              }
+
+            } catch (err) {
+              if (err.message === 'RATE_LIMIT') {
+                retries--;
+                if (retries > 0) {
+                  write(`  ⚠️ Kena limit (403). Nunggu 8 detik... (Sisa retry: ${retries})`, 'warn');
+                  await new Promise(r => setTimeout(r, 8000));
+                } else {
+                  write(`  ❌ GAGAL: Batas limit Roblox tercapai.`, 'error');
+                  failCount++;
+                }
+              } else {
+                write(`  ❌ GAGAL: ${err.message}`, 'error');
+                failCount++;
+                break;
+              }
+            }
+          }
+
+          el.statSuccess.textContent = successCount;
+          el.statFail.textContent = failCount;
+          updateProgress(currentIdx, audioList.length);
+          
+          if (currentIdx < audioList.length) {
+            await new Promise(r => setTimeout(r, delaySec * 1000));
+          }
+        }
+
+        write('\n--------------------------------------------------');
+        write(`🎉 PROSES SELESAI. Sukses: ${successCount}, Gagal: ${failCount}`, 'success');
+        
+        if (successfulIds.length > 0) {
+          el.btnCopy.disabled = false;
+        }
+
+        el.btnProcess.disabled = false;
+        el.iconLoading.classList.add('hidden');
+        el.iconPlay.classList.remove('hidden');
+        el.btnText.textContent = 'Mulai Proses Batch';
+        el.progressText.textContent = 'Selesai.';
+      });
+    })();
+  </script>
 </body>
 </html>
