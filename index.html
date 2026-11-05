@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roblox Audio Re-Uploader</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0f1117;
+    color: #e6e6e6;
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; }
+  h1 { font-size: 22px; color: #7aa2ff; margin-bottom: 4px; }
+  .sub { font-size: 13px; color: #888; margin-bottom: 22px; }
+  .card {
+    background: #171a23;
+    border: 1px solid #232838;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: #9aa6c7;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+  input[type="text"], input[type="password"] {
+    width: 100%;
+    background: #0d0f15;
+    border: 1px solid #232838;
+    color: #d6e0ff;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: 6px;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  input:focus { border-color: #4a6cf7; }
+  button {
+    background: #4a6cf7;
+    color: #fff;
+    border: none;
+    padding: 12px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+  button:hover { background: #3a5ce5; }
+  button:disabled { background: #2a3350; cursor: not-allowed; }
+  .log {
+    margin-top: 14px;
+    background: #0d0f15;
+    border: 1px solid #232838;
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Consolas', monospace;
+    font-size: 11px;
+    color: #9aa6c7;
+    max-height: 280px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .hint { font-size: 11px; color: #666; margin-top: 6px; line-height: 1.5; }
+  a { color: #7aa2ff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Roblox Audio Re-Uploader</h1>
+  <div class="sub">Masukkan rbxassetid, tool ini download dan re-upload ke akun lo</div>
+
+  <div class="card">
+    <label>API Key Open Cloud</label>
+    <input type="password" id="apiKey" placeholder="Masukkan API Key">
+    <div class="hint">
+      Buat di <a href="https://create.roblox.com/credentials" target="_blank">create.roblox.com/credentials</a>, centang permission <b>assets:write</b> dan <b>assets:read</b>.
+    </div>
+  </div>
+
+  <div class="card">
+    <label>rbxassetid Lama</label>
+    <input type="text" id="sourceId" placeholder="contoh: 115807882232957">
+    <label>Nama Asset Baru</label>
+    <input type="text" id="name" value="Re-uploaded Audio">
+    <label>Deskripsi</label>
+    <input type="text" id="desc" value="Re-uploaded via tool">
+    <button id="btnProcess">Proses jadi ID Baru</button>
+    <div class="log" id="log">Siap proses.</div>
+  </div>
+</div>
+<script>
+(function () {
+  const btn = document.getElementById('btnProcess');
+  const log = document.getElementById('log');
+
+  function write(msg) {
+    log.textContent += '\n' + msg;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  btn.addEventListener('click', async function () {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const rawId = document.getElementById('sourceId').value.trim();
+    const name = document.getElementById('name').value.trim() || 'Re-uploaded Audio';
+    const desc = document.getElementById('desc').value.trim() || '';
+
+    if (!apiKey) return write('API Key kosong.');
+    if (!rawId) return write('rbxassetid kosong.');
+
+    const sourceId = rawId.replace(/^rbxassetid:\/\//, '').replace(/\D/g, '');
+    if (!sourceId) return write('ID tidak valid.');
+
+    btn.disabled = true;
+    write('Memproses ID: ' + sourceId);
+
+    try {
+      write('Langkah 1: download audio dari CDN Roblox...');
+      const dlRes = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceId: sourceId })
+      });
+      const dlData = await dlRes.json();
+
+      if (!dlData.success) {
+        write('Gagal download: ' + JSON.stringify(dlData));
+        btn.disabled = false;
+        return;
+      }
+      write('Download OK. Ukuran: ' + Math.round(dlData.size / 1024) + ' KB');
+
+      write('Langkah 2: buat operasi upload di Roblox...');
+      const createRes = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: apiKey,
+          name: name,
+          description: desc,
+          fileBase64: dlData.base64,
+          contentType: dlData.contentType
+        })
+      });
+      const createData = await createRes.json();
+      if (!createData.operationId || !createData.uploadUrl) {
+        write('Gagal buat operasi: ' + JSON.stringify(createData));
+        btn.disabled = false;
+        return;
+      }
+      write('Operation ID: ' + createData.operationId);
+
+      write('Langkah 3: kirim file ke storage Roblox...');
+      const binary = atob(dlData.base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: dlData.contentType });
+
+      const putRes = await fetch(createData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': dlData.contentType },
+        body: blob
+      });
+
+      if (!putRes.ok) {
+        write('Upload file gagal, status: ' + putRes.status);
+        btn.disabled = false;
+        return;
+      }
+      write('File terkirim, menunggu Roblox proses...');
+
+      let assetId = null;
+      for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const pollRes = await fetch('/api/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: apiKey,
+            operationId: createData.operationId
+          })
+        });
+        const pollData = await pollRes.json();
+        write('Percobaan ' + (i + 1) + ': ' + (pollData.done ? 'selesai' : 'pending'));
+
+        if (pollData.done && pollData.assetId) {
+          assetId = pollData.assetId;
+          break;
+        }
+        if (pollData.error) {
+          write('Error: ' + JSON.stringify(pollData.error));
+          break;
+        }
+      }
+
+      if (assetId) {
+        write('');
+        write('====================================');
+        write('BERHASIL!');
+        write('ID LAMA: ' + sourceId);
+        write('ID BARU: ' + assetId);
+        write('Pakai di game: rbxassetid://' + assetId);
+        write('====================================');
+        write('');
+        write('JANGAN LUPA: buka Creator Dashboard > Development Items > Audio,');
+        write('cari audio baru lo, klik, tab Permissions, tambahin experience lo.');
+      } else {
+        write('Gagal dapat Asset ID dalam waktu tunggu.');
+      }
+    } catch (e) {
+      write('ERROR: ' + e.message);
+    }
+    btn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>
