@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roblox Bulk Audio Spoofer</title>
+  <title>Roblox Bulk Audio & Animation Spoofer</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -25,13 +25,13 @@
     <header class="mb-8 flex justify-between items-end">
       <div>
         <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
-          Bulk Audio Spoofer
+          Bulk Audio & Anim Spoofer
         </h1>
-        <p class="text-gray-400 mt-1">Fast backend processing (V5).</p>
+        <p class="text-gray-400 mt-1">Fast backend processing (V7).</p>
       </div>
       <div class="hidden md:block">
         <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-xs font-semibold border border-indigo-500/30">
-          V5 • Copy with Names
+          V7 • Anim Support
         </span>
       </div>
     </header>
@@ -78,12 +78,19 @@
             <div>
               <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold flex justify-between">
                 <span>Daftar ID / Teks</span>
-                <span id="idCount" class="text-indigo-400">0 Audio</span>
+                <span id="idCount" class="text-indigo-400">0 Aset</span>
               </label>
-              <textarea id="sourceIds" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors h-40 font-mono text-xs" placeholder="Paste teks berisi nama lagu dan ID di sini..."></textarea>
+              <textarea id="sourceIds" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors h-40 font-mono text-xs" placeholder="Paste teks berisi nama dan ID di sini..."></textarea>
             </div>
             
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Tipe Aset</label>
+                <select id="assetType" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500 appearance-none">
+                  <option value="Audio">Audio</option>
+                  <option value="Animation">Animation</option>
+                </select>
+              </div>
               <div>
                 <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider font-semibold">Prefix Nama</label>
                 <input type="text" id="name" value="Spoofed" class="w-full bg-[#0f1115] border border-gray-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
@@ -167,6 +174,7 @@
         cookie: document.getElementById('cookie'),
         sourceIds: document.getElementById('sourceIds'),
         idCount: document.getElementById('idCount'),
+        assetType: document.getElementById('assetType'),
         name: document.getElementById('name'),
         delay: document.getElementById('delay'),
         btnProcess: document.getElementById('btnProcess'),
@@ -183,10 +191,8 @@
         statFail: document.getElementById('statFail')
       };
 
-      // --- PERUBAHAN: Simpan sebagai Object (Nama + ID) ---
       let successfulData = [];
 
-      // --- Local Storage Settings ---
       const loadSettings = () => {
         el.apiKey.value = localStorage.getItem('spoofer_apiKey') || '';
         el.userId.value = localStorage.getItem('spoofer_userId') || '';
@@ -209,7 +215,6 @@
       [el.apiKey, el.userId, el.cookie].forEach(input => input.addEventListener('change', saveSettings));
       loadSettings();
 
-      // --- Utilities ---
       function write(msg, type = '') {
         const span = document.createElement('span');
         if (type) span.className = `log-${type}`;
@@ -225,7 +230,6 @@
         el.progressText.textContent = `Memproses ${current} dari ${total}`;
       }
 
-      // --- SMART PARSER ---
       function parseAudioData(text) {
         const lines = text.split('\n');
         const result = [];
@@ -241,7 +245,7 @@
             const id = idMatch[0];
             let name = line.replace(id, '').replace(/^[\d\.\-\s]+/, '').trim();
             if (!name) name = currentName;
-            if (!name) name = 'Unknown Audio';
+            if (!name) name = 'Unknown Asset';
 
             result.push({ id: id, name: name });
             currentName = ''; 
@@ -263,16 +267,12 @@
 
       el.sourceIds.addEventListener('input', () => {
         const parsed = parseAudioData(el.sourceIds.value);
-        el.idCount.textContent = parsed.length + ' Audio';
+        el.idCount.textContent = parsed.length + ' Aset';
       });
 
-      // --- PERUBAHAN: COPY LOGIC (ID + NAMA) ---
       el.btnCopy.addEventListener('click', () => {
         if (successfulData.length === 0) return;
-        
-        // Format output: -- NAMA LAGU \n rbxassetid://ID
         const textToCopy = successfulData.map(item => `-- ${item.name}\nrbxassetid://${item.id}`).join('\n\n');
-        
         navigator.clipboard.writeText(textToCopy).then(() => {
           el.btnCopy.innerHTML = '<span class="flex items-center gap-2">✅ Berhasil Di-copy!</span>';
           setTimeout(() => {
@@ -281,12 +281,12 @@
         });
       });
 
-      // --- Main Process ---
       el.btnProcess.addEventListener('click', async function () {
         const apiKey = el.apiKey.value.trim();
         const userId = el.userId.value.trim();
         const cookie = el.cookie.value.trim();
         const rawInput = el.sourceIds.value.trim();
+        const assetType = el.assetType.value; // Ambil tipe aset
         const baseName = el.name.value.trim() || 'Spoofed';
         const delaySec = parseInt(el.delay.value) || 5;
 
@@ -305,14 +305,13 @@
         el.statSuccess.textContent = '0';
         el.statFail.textContent = '0';
         el.btnCopy.disabled = true;
-        
-        successfulData = []; // Reset data object
+        successfulData = [];
         
         let successCount = 0;
         let failCount = 0;
         let currentIdx = 0;
 
-        write(`🚀 Memulai Fast Process untuk ${audioList.length} Audio...`, 'info');
+        write(`🚀 Memulai Fast Process untuk ${audioList.length} ${assetType}...`, 'info');
         write('--------------------------------------------------');
         
         updateProgress(0, audioList.length);
@@ -333,7 +332,7 @@
           
           while (retries > 0 && !success) {
             try {
-              write('  ⚡ Memproses di server (Fast Mode)...', 'info');
+              write(`  ⚡ Memproses ${assetType} di server...`, 'info');
               
               const processRes = await fetch('/api/process', {
                 method: 'POST',
@@ -343,6 +342,7 @@
                   cookie: cookie,
                   apiKey: apiKey,
                   userId: userId,
+                  assetType: assetType, // Kirim tipe aset ke backend
                   name: uploadName,
                   description: 'Batch processed via Tool'
                 })
@@ -377,7 +377,6 @@
 
               if (assetId) {
                 write(`  ✅ SUKSES: rbxassetid://${assetId}`, 'success');
-                // Simpan sebagai object (nama + id)
                 successfulData.push({ name: audioName, id: assetId });
                 successCount++;
                 success = true;
