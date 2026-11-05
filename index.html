@@ -85,6 +85,9 @@
     <label>API Key Open Cloud (Untuk Upload)</label>
     <input type="password" id="apiKey" placeholder="Masukkan API Key (centang assets:write & assets:read)">
     
+    <label style="margin-top:12px;">User ID Roblox Lo</label>
+    <input type="text" id="userId" placeholder="Contoh: 123456789 (Cek di profil lo)">
+    
     <label style="margin-top:12px;">Cookie .ROBLOSECURITY (Untuk Download)</label>
     <input type="password" id="cookie" placeholder="Masukkan cookie _|WARNING:-DO-NOT-SHARE...">
     <div class="hint">F12 > Application > Cookies > roblox.com > copy value .ROBLOSECURITY</div>
@@ -113,12 +116,14 @@
 
   btn.addEventListener('click', async function () {
     const apiKey = document.getElementById('apiKey').value.trim();
+    const userId = document.getElementById('userId').value.trim();
     const cookie = document.getElementById('cookie').value.trim();
     const rawId = document.getElementById('sourceId').value.trim();
     const name = document.getElementById('name').value.trim() || 'Re-uploaded Audio';
     const desc = document.getElementById('desc').value.trim() || '';
 
     if (!apiKey) return write('API Key kosong.');
+    if (!userId) return write('User ID kosong.');
     if (!cookie) return write('Cookie kosong.');
     if (!rawId) return write('rbxassetid kosong.');
 
@@ -144,12 +149,13 @@
       }
       write('Download OK. Ukuran: ' + Math.round(dlData.size / 1024) + ' KB');
 
-      write('Langkah 2: Buat operasi upload di Roblox pakai API Key...');
+      write('Langkah 2: Upload ke Roblox pakai API Key...');
       const createRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           apiKey: apiKey,
+          userId: userId,
           name: name,
           description: desc,
           fileBase64: dlData.base64,
@@ -157,31 +163,14 @@
         })
       });
       const createData = await createRes.json();
-      if (!createData.operationId || !createData.uploadUrl) {
+      
+      if (!createData.operationId) {
         write('Gagal buat operasi: ' + JSON.stringify(createData));
         btn.disabled = false;
         return;
       }
       write('Operation ID: ' + createData.operationId);
-
-      write('Langkah 3: Kirim file ke storage Roblox...');
-      const binary = atob(dlData.base64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const blob = new Blob([bytes], { type: dlData.contentType });
-
-      const putRes = await fetch(createData.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': dlData.contentType },
-        body: blob
-      });
-
-      if (!putRes.ok) {
-        write('Upload file gagal, status: ' + putRes.status);
-        btn.disabled = false;
-        return;
-      }
-      write('File terkirim, menunggu Roblox proses...');
+      write('File terkirim ke Roblox, menunggu proses...');
 
       let assetId = null;
       for (let i = 0; i < 20; i++) {
