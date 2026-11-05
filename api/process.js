@@ -5,11 +5,11 @@ export const config = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
-  const { sourceId, cookie, apiKey, userId, assetType, name, description } = req.body || {};
+  const { sourceId, cookie, apiKey, userId, name, description } = req.body || {};
   if (!sourceId || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
 
   try {
-    // TAHAP 1: DOWNLOAD
+    // TAHAP 1: DOWNLOAD PAKE OPEN CLOUD API (Wajib punya scope legacy-asset:manage)
     const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
       headers: { 'x-api-key': apiKey }
     });
@@ -18,45 +18,35 @@ export default async function handler(req, res) {
       const errText = await cloudRes.text();
       return res.status(cloudRes.status).json({ 
         success: false, 
-        error: `[DOWNLOAD GAGAL] Status ${cloudRes.status}. API Key lo nggak punya akses ke aset ini.` 
+        error: `[DOWNLOAD GAGAL] Status ${cloudRes.status}. API Key lo nggak punya akses ke aset ini. Pastikan API Key dibuat di akun yang sama dengan User ID, dan punya izin legacy-asset:manage.` 
       });
     }
 
     const metaData = await cloudRes.json();
-    
-    // FIX: Nangkep format array atau object dari Roblox
-    let locationUrl = null;
-    if (Array.isArray(metaData) && metaData.length > 0) {
-      locationUrl = metaData[0].location;
-    } else if (metaData && metaData.location) {
-      locationUrl = metaData.location;
-    }
+    const locationUrl = metaData.location;
 
     if (!locationUrl) {
-       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan.` });
+       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan di response Roblox.` });
     }
 
     const downloadRes = await fetch(locationUrl);
     if (!downloadRes.ok) return res.status(500).json({ success: false, error: `[DOWNLOAD GAGAL] Gagal narik file dari CDN.` });
 
     const arrayBuffer = await downloadRes.arrayBuffer();
-    const contentType = downloadRes.headers.get('content-type') || 'application/octet-stream';
+    const contentType = downloadRes.headers.get('content-type') || 'audio/mpeg';
     
     // TAHAP 2: UPLOAD
     const fileBlob = new Blob([arrayBuffer], { type: contentType });
-    
-    // Gunakan assetType dari frontend (Audio atau Animation)
     const metadata = {
-      assetType: assetType || 'Audio',
-      displayName: name || 'Spoofed Asset',
+      assetType: 'Audio',
+      displayName: name || 'Spoofed Audio',
       description: description || '',
       creationContext: { creator: { userId: userId.toString() } }
     };
 
     const formData = new FormData();
     formData.append('request', JSON.stringify(metadata));
-    const fileName = assetType === 'Animation' ? 'animation.rbxm' : 'audio.mp3';
-    formData.append('fileContent', fileBlob, fileName);
+    formData.append('fileContent', fileBlob, 'audio.mp3');
 
     const createRes = await fetch('https://apis.roblox.com/assets/v1/assets', {
       method: 'POST',
@@ -70,7 +60,7 @@ export default async function handler(req, res) {
 
     if (!createRes.ok) {
       let errorMsg = `[UPLOAD GAGAL] Status ${createRes.status}. `;
-      if (createRes.status === 400) errorMsg += "Pastikan tipe aset sesuai dan User ID benar.";
+      if (createRes.status === 400) errorMsg += "User ID harus sesuai pemilik API Key.";
       return res.status(createRes.status).json({ success: false, error: errorMsg, detail: createData });
     }
 
