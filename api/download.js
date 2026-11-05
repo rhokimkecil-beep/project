@@ -19,30 +19,40 @@ export default async function handler(req, res) {
       const errText = await metaRes.text();
       return res.status(metaRes.status).json({
         success: false,
-        error: `Gagal ambil metadata (Status ${metaRes.status})`,
+        error: `Gagal ambil data (Status ${metaRes.status})`,
         detail: errText
       });
     }
 
-    const meta = await metaRes.json();
-    const audioUrl = meta.location || meta.locationUrl;
-    
-    if (!audioUrl) {
-      return res.status(500).json({ success: false, error: 'Location URL tidak ditemukan' });
-    }
+    let arrayBuffer;
+    let contentType = metaRes.headers.get('content-type') || 'audio/mpeg';
 
-    const audioRes = await fetch(audioUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    // Cek apakah response berupa JSON (metadata lama) atau langsung file binary (sekarang)
+    if (contentType.includes('application/json')) {
+      const meta = await metaRes.json();
+      const audioUrl = meta.location || meta.locationUrl;
+      
+      if (!audioUrl) {
+        return res.status(500).json({ success: false, error: 'Location URL tidak ditemukan' });
       }
-    });
 
-    if (!audioRes.ok) {
-      return res.status(audioRes.status).json({ success: false, error: `CDN fetch gagal (Status ${audioRes.status})` });
+      const audioRes = await fetch(audioUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+
+      if (!audioRes.ok) {
+        return res.status(audioRes.status).json({ success: false, error: `CDN fetch gagal (Status ${audioRes.status})` });
+      }
+
+      contentType = audioRes.headers.get('content-type') || contentType;
+      arrayBuffer = await audioRes.arrayBuffer();
+    } else {
+      // Kalau langsung file (OggS, ID3, dll), ambil langsung datanya
+      arrayBuffer = await metaRes.arrayBuffer();
     }
 
-    const contentType = audioRes.headers.get('content-type') || 'audio/mpeg';
-    const arrayBuffer = await audioRes.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString('base64');
 
     res.status(200).json({
