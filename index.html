@@ -286,7 +286,7 @@
         const userId = el.userId.value.trim();
         const cookie = el.cookie.value.trim();
         const rawInput = el.sourceIds.value.trim();
-        const assetType = el.assetType.value; // Ambil tipe aset
+        const assetType = el.assetType.value;
         const baseName = el.name.value.trim() || 'Spoofed';
         const delaySec = parseInt(el.delay.value) || 5;
 
@@ -342,7 +342,7 @@
                   cookie: cookie,
                   apiKey: apiKey,
                   userId: userId,
-                  assetType: assetType, // Kirim tipe aset ke backend
+                  assetType: assetType,
                   name: uploadName,
                   description: 'Batch processed via Tool'
                 })
