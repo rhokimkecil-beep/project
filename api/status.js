@@ -16,10 +16,7 @@ export default async function handler(req, res) {
     const data = await r.json();
 
     if (!r.ok) {
-      return res.status(r.status).json({
-        error: 'roblox rejected status',
-        detail: data
-      });
+      return res.status(r.status).json({ error: 'roblox rejected status', detail: data });
     }
 
     res.status(200).json({
