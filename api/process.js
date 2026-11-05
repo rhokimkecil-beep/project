@@ -10,46 +10,43 @@ export default async function handler(req, res) {
 
   try {
     // ==========================================
-    // TAHAP 1: DOWNLOAD AUDIO (Auto-Bypass)
+    // TAHAP 1: DOWNLOAD AUDIO (HANYA PAKAI COOKIE V2)
     // ==========================================
     let downloadRes;
     
-    // Metode A: Trik Endpoint Lama (Pura-pura jadi Browser Chrome)
-    downloadRes = await fetch(`https://assetdelivery.roblox.com/v1/asset?id=${sourceId}`, {
+    // 1. Tembak API V2 pakai Cookie
+    const v2Res = await fetch(`https://assetdelivery.roblox.com/v2/assetId/${sourceId}`, {
       headers: {
         'Cookie': `.ROBLOSECURITY=${cookie}`,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.roblox.com/',
-        'Origin': 'https://www.roblox.com',
-        'Accept': 'application/json, text/plain, */*'
+        'Accept': 'application/json'
       }
     });
 
-    // Metode B: Kalau Metode A gagal (403/401), Pindah ke Open Cloud API
-    if (!downloadRes.ok) {
-      const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
-        headers: { 'x-api-key': apiKey }
+    if (!v2Res.ok) {
+      return res.status(v2Res.status).json({ 
+        success: false, 
+        error: `[DOWNLOAD GAGAL] Roblox nolak Cookie lo (Status ${v2Res.status}). Pastikan cookie fresh atau coba lagi nanti.` 
       });
-
-      if (cloudRes.ok) {
-        const metaData = await cloudRes.json();
-        if (metaData.location) {
-          // Ambil file asli dari CDN
-          downloadRes = await fetch(metaData.location);
-        } else {
-           return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] API Key tidak punya akses ke aset ini.` });
-        }
-      } else {
-         return res.status(403).json({ success: false, error: `[DOWNLOAD GAGAL] Cookie mati atau aset di-private total.` });
-      }
     }
 
-    // Baca file audionya
+    const v2Data = await v2Res.json();
+    if (!v2Data.location) {
+       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan di response Roblox.` });
+    }
+
+    // 2. Ambil file asli dari CDN Roblox
+    downloadRes = await fetch(v2Data.location);
+
+    if (!downloadRes.ok) {
+      return res.status(500).json({ success: false, error: `[DOWNLOAD GAGAL] Gagal ambil file dari CDN Roblox.` });
+    }
+
     const arrayBuffer = await downloadRes.arrayBuffer();
     const contentType = downloadRes.headers.get('content-type') || 'audio/mpeg';
     
     // ==========================================
-    // TAHAP 2: UPLOAD KE AKUN LO
+    // TAHAP 2: UPLOAD KE AKUN LO (PAKAI API KEY)
     // ==========================================
     const fileBlob = new Blob([arrayBuffer], { type: contentType });
     const metadata = {
