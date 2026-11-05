@@ -82,11 +82,12 @@
   <div class="sub">Masukkan rbxassetid, tool ini download dan re-upload ke akun lo</div>
 
   <div class="card">
-    <label>API Key Open Cloud</label>
-    <input type="password" id="apiKey" placeholder="Masukkan API Key">
-    <div class="hint">
-      Buat di <a href="https://create.roblox.com/credentials" target="_blank">create.roblox.com/credentials</a>, centang permission <b>assets:write</b> dan <b>assets:read</b>.
-    </div>
+    <label>API Key Open Cloud (Untuk Upload)</label>
+    <input type="password" id="apiKey" placeholder="Masukkan API Key (centang assets:write & assets:read)">
+    
+    <label style="margin-top:12px;">Cookie .ROBLOSECURITY (Untuk Download)</label>
+    <input type="password" id="cookie" placeholder="Masukkan cookie _|WARNING:-DO-NOT-SHARE...">
+    <div class="hint">F12 > Application > Cookies > roblox.com > copy value .ROBLOSECURITY</div>
   </div>
 
   <div class="card">
@@ -112,25 +113,27 @@
 
   btn.addEventListener('click', async function () {
     const apiKey = document.getElementById('apiKey').value.trim();
+    const cookie = document.getElementById('cookie').value.trim();
     const rawId = document.getElementById('sourceId').value.trim();
     const name = document.getElementById('name').value.trim() || 'Re-uploaded Audio';
     const desc = document.getElementById('desc').value.trim() || '';
 
     if (!apiKey) return write('API Key kosong.');
+    if (!cookie) return write('Cookie kosong.');
     if (!rawId) return write('rbxassetid kosong.');
 
     const sourceId = rawId.replace(/^rbxassetid:\/\//, '').replace(/\D/g, '');
     if (!sourceId) return write('ID tidak valid.');
 
     btn.disabled = true;
-    write('Memproses ID: ' + sourceId);
+    log.textContent = 'Memproses ID: ' + sourceId;
 
     try {
-      write('Langkah 1: download audio dari CDN Roblox...');
+      write('Langkah 1: Download audio pakai Cookie...');
       const dlRes = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sourceId: sourceId })
+        body: JSON.stringify({ sourceId: sourceId, cookie: cookie })
       });
       const dlData = await dlRes.json();
 
@@ -141,7 +144,7 @@
       }
       write('Download OK. Ukuran: ' + Math.round(dlData.size / 1024) + ' KB');
 
-      write('Langkah 2: buat operasi upload di Roblox...');
+      write('Langkah 2: Buat operasi upload di Roblox pakai API Key...');
       const createRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -161,7 +164,7 @@
       }
       write('Operation ID: ' + createData.operationId);
 
-      write('Langkah 3: kirim file ke storage Roblox...');
+      write('Langkah 3: Kirim file ke storage Roblox...');
       const binary = atob(dlData.base64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -186,10 +189,7 @@
         const pollRes = await fetch('/api/status', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            apiKey: apiKey,
-            operationId: createData.operationId
-          })
+          body: JSON.stringify({ apiKey: apiKey, operationId: createData.operationId })
         });
         const pollData = await pollRes.json();
         write('Percobaan ' + (i + 1) + ': ' + (pollData.done ? 'selesai' : 'pending'));
@@ -212,9 +212,6 @@
         write('ID BARU: ' + assetId);
         write('Pakai di game: rbxassetid://' + assetId);
         write('====================================');
-        write('');
-        write('JANGAN LUPA: buka Creator Dashboard > Development Items > Audio,');
-        write('cari audio baru lo, klik, tab Permissions, tambahin experience lo.');
       } else {
         write('Gagal dapat Asset ID dalam waktu tunggu.');
       }
