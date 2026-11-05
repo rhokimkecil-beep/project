@@ -5,7 +5,6 @@ export const config = {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   
-  // Tambahkan assetType di sini
   const { sourceId, cookie, apiKey, userId, assetType, name, description } = req.body || {};
   if (!sourceId || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
 
@@ -24,7 +23,14 @@ export default async function handler(req, res) {
     }
 
     const metaData = await cloudRes.json();
-    const locationUrl = metaData.location;
+    
+    // FIX: Nangkep format array atau object dari Roblox
+    let locationUrl = null;
+    if (Array.isArray(metaData) && metaData.length > 0) {
+      locationUrl = metaData[0].location;
+    } else if (metaData && metaData.location) {
+      locationUrl = metaData.location;
+    }
 
     if (!locationUrl) {
        return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan.` });
@@ -41,7 +47,7 @@ export default async function handler(req, res) {
     
     // Gunakan assetType dari frontend (Audio atau Animation)
     const metadata = {
-      assetType: assetType || 'Audio', // <--- INI BAGIAN PENTINGNYA
+      assetType: assetType || 'Audio',
       displayName: name || 'Spoofed Asset',
       description: description || '',
       creationContext: { creator: { userId: userId.toString() } }
@@ -49,7 +55,6 @@ export default async function handler(req, res) {
 
     const formData = new FormData();
     formData.append('request', JSON.stringify(metadata));
-    // Kasih nama file yang sesuai formatnya
     const fileName = assetType === 'Animation' ? 'animation.rbxm' : 'audio.mp3';
     formData.append('fileContent', fileBlob, fileName);
 
