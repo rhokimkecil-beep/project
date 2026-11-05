@@ -9,45 +9,68 @@ export default async function handler(req, res) {
   if (!sourceId || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
 
   try {
-    let downloadRes;
-    
-    // METODE 1: Paksa pakai Cookie + Trik Header Browser (Biar lolos dari blokir Vercel)
+    let downloadRes = null;
+    let errorDetail = '';
+
+    // METODE 1: assetdelivery v2 (Pakai Cookie)
     if (cookie) {
-      downloadRes = await fetch(`https://assetdelivery.roblox.com/v1/asset?id=${sourceId}`, {
-        headers: {
-          'Cookie': `.ROBLOSECURITY=${cookie}`,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://www.roblox.com/',
-          'Origin': 'https://www.roblox.com',
-          'Accept': 'application/json, text/plain, */*'
+      try {
+        const v2Res = await fetch(`https://assetdelivery.roblox.com/v2/assetId/${sourceId}`, {
+          headers: {
+            'Cookie': `.ROBLOSECURITY=${cookie}`,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json'
+          }
+        });
+
+        if (v2Res.ok) {
+          const v2Data = await v2Res.json();
+          let locationUrl = null;
+          if (Array.isArray(v2Data) && v2Data.length > 0) locationUrl = v2Data[0].location;
+          else if (v2Data && v2Data.location) locationUrl = v2Data.location;
+
+          if (locationUrl) {
+            downloadRes = await fetch(locationUrl);
+          } else {
+            errorDetail += `| V2 Cookie Response: ${JSON.stringify(v2Data)} `;
+          }
+        } else {
+          errorDetail += `| V2 Cookie Status: ${v2Res.status} `;
         }
-      });
+      } catch (e) {
+        errorDetail += `| V2 Cookie Error: ${e.message} `;
+      }
     }
 
-    // METODE 2: Kalau Cookie gagal, tembak pakai API Key (Open Cloud)
+    // METODE 2: Open Cloud API (Kalau Cookie gagal)
     if (!downloadRes || !downloadRes.ok) {
-      const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
-        headers: { 'x-api-key': apiKey }
-      });
+      try {
+        const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
+          headers: { 'x-api-key': apiKey }
+        });
 
-      if (cloudRes.ok) {
-        const metaData = await cloudRes.json();
-        let locationUrl = null;
-        if (Array.isArray(metaData) && metaData.length > 0) locationUrl = metaData[0].location;
-        else if (metaData && metaData.location) locationUrl = metaData.location;
+        if (cloudRes.ok) {
+          const metaData = await cloudRes.json();
+          let locationUrl = null;
+          if (Array.isArray(metaData) && metaData.length > 0) locationUrl = metaData[0].location;
+          else if (metaData && metaData.location) locationUrl = metaData.location;
 
-        if (locationUrl) {
-          downloadRes = await fetch(locationUrl);
+          if (locationUrl) {
+            downloadRes = await fetch(locationUrl);
+          } else {
+             errorDetail += `| Cloud API Response: ${JSON.stringify(metaData)} `;
+          }
         } else {
-          return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan.` });
+          const cloudErrText = await cloudRes.text();
+          errorDetail += `| Cloud API Status: ${cloudRes.status} (${cloudErrText}) `;
         }
-      } else {
-        return res.status(403).json({ success: false, error: `[DOWNLOAD GAGAL] IP Vercel diblokir Roblox. Coba lagi nanti.` });
+      } catch (e) {
+        errorDetail += `| Cloud API Error: ${e.message} `;
       }
     }
 
     if (!downloadRes || !downloadRes.ok) {
-       return res.status(500).json({ success: false, error: `[DOWNLOAD GAGAL] Gagal narik file dari CDN.` });
+       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Detail: ${errorDetail}` });
     }
 
     const arrayBuffer = await downloadRes.arrayBuffer();
