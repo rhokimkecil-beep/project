@@ -1,41 +1,39 @@
 export const config = {
-  api: { bodyParser: { sizeLimit: '25mb' } }
+  api: {
+    bodyParser: { sizeLimit: '25mb' }
+  }
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
+  if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' });
+
   const { sourceId, cookie, apiKey, userId, name, description } = req.body || {};
-  if (!sourceId || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
+
+  if (!sourceId || !cookie || !apiKey || !userId) {
+    return res.status(400).json({ error: 'Parameter tidak lengkap' });
+  }
 
   try {
-    // TAHAP 1: DOWNLOAD PAKE OPEN CLOUD API (Wajib punya scope legacy-asset:manage)
-    const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
-      headers: { 'x-api-key': apiKey }
+    // --- LANGKAH 1: DOWNLOAD DARI ROBLOX ---
+    const metaRes = await fetch(`https://assetdelivery.roblox.com/v1/asset?id=${sourceId}`, {
+      headers: {
+        'Cookie': `.ROBLOSECURITY=${cookie}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
     });
 
-    if (!cloudRes.ok) {
-      const errText = await cloudRes.text();
-      return res.status(cloudRes.status).json({ 
+    if (!metaRes.ok) {
+      // Kalau kena limit (403) atau error lain
+      return res.status(metaRes.status).json({ 
         success: false, 
-        error: `[DOWNLOAD GAGAL] Status ${cloudRes.status}. API Key lo nggak punya akses ke aset ini. Pastikan API Key dibuat di akun yang sama dengan User ID, dan punya izin legacy-asset:manage.` 
+        error: `Download gagal (Status ${metaRes.status})` 
       });
     }
 
-    const metaData = await cloudRes.json();
-    const locationUrl = metaData.location;
+    const arrayBuffer = await metaRes.arrayBuffer();
+    const contentType = metaRes.headers.get('content-type') || 'audio/mpeg';
 
-    if (!locationUrl) {
-       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] Link download tidak ditemukan di response Roblox.` });
-    }
-
-    const downloadRes = await fetch(locationUrl);
-    if (!downloadRes.ok) return res.status(500).json({ success: false, error: `[DOWNLOAD GAGAL] Gagal narik file dari CDN.` });
-
-    const arrayBuffer = await downloadRes.arrayBuffer();
-    const contentType = downloadRes.headers.get('content-type') || 'audio/mpeg';
-    
-    // TAHAP 2: UPLOAD
+    // --- LANGKAH 2: UPLOAD KE ROBLOX ---
     const fileBlob = new Blob([arrayBuffer], { type: contentType });
     const metadata = {
       assetType: 'Audio',
@@ -56,18 +54,22 @@ export default async function handler(req, res) {
 
     const rawText = await createRes.text();
     let createData;
-    try { createData = JSON.parse(rawText); } catch (e) { createData = { raw: rawText }; }
+    try { createData = JSON.parse(rawText); } catch (e) { createData = {}; }
 
     if (!createRes.ok) {
-      let errorMsg = `[UPLOAD GAGAL] Status ${createRes.status}. `;
-      if (createRes.status === 400) errorMsg += "User ID harus sesuai pemilik API Key.";
-      return res.status(createRes.status).json({ success: false, error: errorMsg, detail: createData });
+      return res.status(createRes.status).json({ success: false, error: 'Roblox reject upload', detail: createData });
     }
 
     const operationId = createData.operationId || createData.operation?.id || createData.path?.split('/').pop();
+    
+    if (!operationId) {
+      return res.status(500).json({ success: false, error: 'Operation ID tidak ditemukan' });
+    }
+
+    // Kembalikan operationId ke frontend buat di-polling
     res.status(200).json({ success: true, operationId });
     
   } catch (e) {
-    res.status(500).json({ success: false, error: `[SERVER ERROR] ${e.message}` });
+    res.status(500).json({ success: false, error: e.message });
   }
 }
