@@ -24,35 +24,8 @@ export default async function handler(req, res) {
       });
     }
 
-    let arrayBuffer;
-    let contentType = metaRes.headers.get('content-type') || 'audio/mpeg';
-
-    // Cek apakah response berupa JSON (metadata lama) atau langsung file binary (sekarang)
-    if (contentType.includes('application/json')) {
-      const meta = await metaRes.json();
-      const audioUrl = meta.location || meta.locationUrl;
-      
-      if (!audioUrl) {
-        return res.status(500).json({ success: false, error: 'Location URL tidak ditemukan' });
-      }
-
-      const audioRes = await fetch(audioUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-      });
-
-      if (!audioRes.ok) {
-        return res.status(audioRes.status).json({ success: false, error: `CDN fetch gagal (Status ${audioRes.status})` });
-      }
-
-      contentType = audioRes.headers.get('content-type') || contentType;
-      arrayBuffer = await audioRes.arrayBuffer();
-    } else {
-      // Kalau langsung file (OggS, ID3, dll), ambil langsung datanya
-      arrayBuffer = await metaRes.arrayBuffer();
-    }
-
+    const arrayBuffer = await metaRes.arrayBuffer();
+    const contentType = metaRes.headers.get('content-type') || 'audio/mpeg';
     const base64 = Buffer.from(arrayBuffer).toString('base64');
 
     res.status(200).json({
