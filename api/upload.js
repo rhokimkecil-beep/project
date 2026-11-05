@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       displayName: name || 'Re-uploaded Audio',
       description: description || '',
       creationContext: {
-        creator: { userId: '0' }
+        creator: { userId: '0' } // 0 artinya otomatis ngikutin pemilik API Key
       }
     };
 
