@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     let downloadRes = null;
     let errorDetail = '';
 
-    // METODE 1: Endpoint Klasik Web (Sering Bypass Blokir)
+    // METODE 1: Endpoint Klasik (Pake Slash)
     if (cookie) {
       try {
         const webRes = await fetch(`https://www.roblox.com/asset/?id=${sourceId}`, {
@@ -25,12 +25,12 @@ export default async function handler(req, res) {
         if (webRes.ok) {
           downloadRes = webRes;
         } else {
-           errorDetail += `| Web API Status: ${webRes.status} `;
+           errorDetail += `| Web API: ${webRes.status} `;
         }
       } catch (e) { errorDetail += `| Web API Err: ${e.message} `; }
     }
 
-    // METODE 2: assetdelivery V1 (Format ?id=)
+    // METODE 2: V1 Asset Delivery (Format ?id=)
     if (!downloadRes || !downloadRes.ok) {
       if (cookie) {
         try {
@@ -47,19 +47,37 @@ export default async function handler(req, res) {
             if (Array.isArray(v1Data) && v1Data.length > 0) loc = v1Data[0].location;
             else if (v1Data && v1Data.location) loc = v1Data.location;
 
-            if (loc) {
-              downloadRes = await fetch(loc);
-            } else {
-              errorDetail += `| V1 API: No Location `;
-            }
+            if (loc) downloadRes = await fetch(loc);
+            else errorDetail += `| V1: No Loc `;
           } else {
-             errorDetail += `| V1 API Status: ${v1Res.status} `;
+             errorDetail += `| V1 Status: ${v1Res.status} `;
           }
-        } catch (e) { errorDetail += `| V1 API Err: ${e.message} `; }
+        } catch (e) { errorDetail += `| V1 Err: ${e.message} `; }
       }
     }
 
-    // METODE 3: Open Cloud API (Pake API Key)
+    // METODE 3: Item Delivery API (Sering dipake bot Discord)
+    if (!downloadRes || !downloadRes.ok) {
+      if (cookie) {
+        try {
+          const itemRes = await fetch(`https://itemdelivery.roblox.com/v1/asset/${sourceId}`, {
+            headers: {
+              'Cookie': `.ROBLOSECURITY=${cookie}`,
+              'User-Agent': 'Roblox/WinInet'
+            }
+          });
+          if (itemRes.ok) {
+             const itemData = await itemRes.json();
+             if (itemData.url) downloadRes = await fetch(itemData.url);
+             else errorDetail += `| Item: No URL `;
+          } else {
+             errorDetail += `| Item Status: ${itemRes.status} `;
+          }
+        } catch(e) { errorDetail += `| Item Err: ${e.message} `; }
+      }
+    }
+
+    // METODE 4: Open Cloud API
     if (!downloadRes || !downloadRes.ok) {
       try {
         const cloudRes = await fetch(`https://apis.roblox.com/asset-delivery-api/v1/assetId/${sourceId}`, {
@@ -71,16 +89,12 @@ export default async function handler(req, res) {
           if (Array.isArray(metaData) && metaData.length > 0) loc = metaData[0].location;
           else if (metaData && metaData.location) loc = metaData.location;
 
-          if (loc) {
-            downloadRes = await fetch(loc);
-          } else {
-             errorDetail += `| Cloud API: No Location `;
-          }
+          if (loc) downloadRes = await fetch(loc);
+          else errorDetail += `| Cloud: No Loc `;
         } else {
-          const errText = await cloudRes.text();
-          errorDetail += `| Cloud API Status: ${cloudRes.status} (${errText}) `;
+          errorDetail += `| Cloud Status: ${cloudRes.status} `;
         }
-      } catch (e) { errorDetail += `| Cloud API Err: ${e.message} `; }
+      } catch (e) { errorDetail += `| Cloud Err: ${e.message} `; }
     }
 
     if (!downloadRes || !downloadRes.ok) {
