@@ -1,18 +1,31 @@
+// --- api/process.js ---
 export const config = {
   api: { bodyParser: { sizeLimit: '25mb' } }
 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  
-  const { sourceId, cookie, apiKey, userId, assetType, name, description } = req.body || {};
-  if (!sourceId || !apiKey || !userId) return res.status(400).json({ error: 'Parameter tidak lengkap' });
+
+  const {
+    sourceId, cookie, apiKey,
+    userId, groupId, creatorType,
+    assetType, name, description
+  } = req.body || {};
+
+  if (!sourceId || !apiKey) return res.status(400).json({ error: 'Parameter tidak lengkap' });
+  if (creatorType === 'group' && !groupId) return res.status(400).json({ error: 'Group ID kosong' });
+  if (creatorType !== 'group' && !userId) return res.status(400).json({ error: 'User ID kosong' });
+
+  // Bangun creationContext sesuai tipe creator
+  const creationContext = creatorType === 'group'
+    ? { creator: { groupId: groupId.toString() } }
+    : { creator: { userId: userId.toString() } };
 
   try {
     let downloadRes = null;
     let errorDetail = '';
 
-    // METODE 1: Endpoint Klasik (Pake Slash)
+    // METODE 1: Endpoint Klasik
     if (cookie) {
       try {
         const webRes = await fetch(`https://www.roblox.com/asset/?id=${sourceId}`, {
@@ -22,15 +35,12 @@ export default async function handler(req, res) {
             'Accept': '*/*'
           }
         });
-        if (webRes.ok) {
-          downloadRes = webRes;
-        } else {
-           errorDetail += `| Web API: ${webRes.status} `;
-        }
+        if (webRes.ok) downloadRes = webRes;
+        else errorDetail += `| Web API: ${webRes.status} `;
       } catch (e) { errorDetail += `| Web API Err: ${e.message} `; }
     }
 
-    // METODE 2: V1 Asset Delivery (Format ?id=)
+    // METODE 2: V1 Asset Delivery
     if (!downloadRes || !downloadRes.ok) {
       if (cookie) {
         try {
@@ -46,17 +56,14 @@ export default async function handler(req, res) {
             let loc = null;
             if (Array.isArray(v1Data) && v1Data.length > 0) loc = v1Data[0].location;
             else if (v1Data && v1Data.location) loc = v1Data.location;
-
             if (loc) downloadRes = await fetch(loc);
             else errorDetail += `| V1: No Loc `;
-          } else {
-             errorDetail += `| V1 Status: ${v1Res.status} `;
-          }
+          } else errorDetail += `| V1 Status: ${v1Res.status} `;
         } catch (e) { errorDetail += `| V1 Err: ${e.message} `; }
       }
     }
 
-    // METODE 3: Item Delivery API (Sering dipake bot Discord)
+    // METODE 3: Item Delivery API
     if (!downloadRes || !downloadRes.ok) {
       if (cookie) {
         try {
@@ -67,13 +74,11 @@ export default async function handler(req, res) {
             }
           });
           if (itemRes.ok) {
-             const itemData = await itemRes.json();
-             if (itemData.url) downloadRes = await fetch(itemData.url);
-             else errorDetail += `| Item: No URL `;
-          } else {
-             errorDetail += `| Item Status: ${itemRes.status} `;
-          }
-        } catch(e) { errorDetail += `| Item Err: ${e.message} `; }
+            const itemData = await itemRes.json();
+            if (itemData.url) downloadRes = await fetch(itemData.url);
+            else errorDetail += `| Item: No URL `;
+          } else errorDetail += `| Item Status: ${itemRes.status} `;
+        } catch (e) { errorDetail += `| Item Err: ${e.message} `; }
       }
     }
 
@@ -88,29 +93,26 @@ export default async function handler(req, res) {
           let loc = null;
           if (Array.isArray(metaData) && metaData.length > 0) loc = metaData[0].location;
           else if (metaData && metaData.location) loc = metaData.location;
-
           if (loc) downloadRes = await fetch(loc);
           else errorDetail += `| Cloud: No Loc `;
-        } else {
-          errorDetail += `| Cloud Status: ${cloudRes.status} `;
-        }
+        } else errorDetail += `| Cloud Status: ${cloudRes.status} `;
       } catch (e) { errorDetail += `| Cloud Err: ${e.message} `; }
     }
 
     if (!downloadRes || !downloadRes.ok) {
-       return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] ${errorDetail}` });
+      return res.status(400).json({ success: false, error: `[DOWNLOAD GAGAL] ${errorDetail}` });
     }
 
-    // TAHAP 2: UPLOAD
+    // UPLOAD
     const arrayBuffer = await downloadRes.arrayBuffer();
     const contentType = downloadRes.headers.get('content-type') || 'application/octet-stream';
-    
     const fileBlob = new Blob([arrayBuffer], { type: contentType });
+
     const metadata = {
       assetType: assetType || 'Audio',
       displayName: name || 'Spoofed Asset',
       description: description || '',
-      creationContext: { creator: { userId: userId.toString() } }
+      creationContext
     };
 
     const formData = new FormData();
@@ -130,13 +132,17 @@ export default async function handler(req, res) {
 
     if (!createRes.ok) {
       let errorMsg = `[UPLOAD GAGAL] Status ${createRes.status}. `;
-      if (createRes.status === 400) errorMsg += "User ID harus sesuai pemilik API Key.";
+      if (createRes.status === 400) {
+        errorMsg += creatorType === 'group'
+          ? 'API Key harus punya akses ke grup tersebut.'
+          : 'User ID harus sesuai pemilik API Key.';
+      }
       return res.status(createRes.status).json({ success: false, error: errorMsg, detail: createData });
     }
 
     const operationId = createData.operationId || createData.operation?.id || createData.path?.split('/').pop();
     res.status(200).json({ success: true, operationId });
-    
+
   } catch (e) {
     res.status(500).json({ success: false, error: `[SERVER ERROR] ${e.message}` });
   }
